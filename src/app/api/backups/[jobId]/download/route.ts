@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@/generated/prisma";
 import { readFile } from "fs/promises";
 import path from "path";
+import { requireAdmin } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   try {
     const { jobId: jobIdParam } = await params;
     const jobId = parseInt(jobIdParam);
     
-    // Get the backup job
     const backupJob = await prisma.backupJob.findUnique({
       where: { id: jobId },
       include: {
@@ -26,13 +29,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
       return NextResponse.json({ error: "Backup file not available" }, { status: 400 });
     }
 
-    // Read the backup file
-    const fullFilePath = path.join(process.cwd(), backupJob.filePath);
+    if (/^[a-z]+:\/\//i.test(backupJob.filePath)) {
+      return NextResponse.json({ error: "Cloud and remote backup downloads are not implemented yet." }, { status: 501 });
+    }
+
+    const fullFilePath = path.resolve(process.cwd(), backupJob.filePath);
+    const appRoot = path.resolve(process.cwd());
+    if (!fullFilePath.startsWith(appRoot)) {
+      return NextResponse.json({ error: "Invalid backup file path" }, { status: 400 });
+    }
     
     try {
       const fileBuffer = await readFile(fullFilePath);
       
-      // Set appropriate headers for file download
       const headers = new Headers();
       headers.set('Content-Type', 'application/octet-stream');
       headers.set('Content-Disposition', `attachment; filename="${backupJob.database.name}_backup.sql"`);
@@ -50,4 +59,4 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
     console.error("Download error:", error);
     return NextResponse.json({ error: "Server error." }, { status: 500 });
   }
-} 
+}
