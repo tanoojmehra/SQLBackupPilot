@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start -p 2407",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck",
     "clear-db": "node scripts/clear-database.js"
   },
   "dependencies": {
