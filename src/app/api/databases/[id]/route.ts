@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@/generated/prisma";
+import { requireAdmin } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     const { 
@@ -37,13 +41,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       where: { id: Number(id) },
       data: updateData,
     });
-    return NextResponse.json({ database });
+
+    const { password: _password, ...safeDatabase } = database;
+    return NextResponse.json({ database: safeDatabase });
   } catch {
     return NextResponse.json({ error: "Server error." }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     await prisma.database.delete({
@@ -53,4 +62,4 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   } catch {
     return NextResponse.json({ error: "Server error." }, { status: 500 });
   }
-} 
+}

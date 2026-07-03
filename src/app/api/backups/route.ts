@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { backupService } from "@/lib/backup-service";
+import { requireAdmin } from "@/lib/api-auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   try {
     const backups = await backupService.listBackups();
     return NextResponse.json({ jobs: backups });
@@ -12,6 +16,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   try {
     const { databaseId, storageId } = await req.json();
     
@@ -41,4 +48,4 @@ export async function POST(req: NextRequest) {
     console.error("Backup creation error:", error);
     return NextResponse.json({ error: "Server error." }, { status: 500 });
   }
-} 
+}

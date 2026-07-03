@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { backupService } from "@/lib/backup-service";
+import { requireAdmin } from "@/lib/api-auth";
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   try {
     const { databaseId, storageId } = await req.json();
     
@@ -17,7 +21,7 @@ export async function POST(req: NextRequest) {
     if (result.success) {
       return NextResponse.json({ 
         success: true, 
-        message: "Manual backup started successfully",
+        message: "Manual backup completed successfully",
         filePath: result.filePath,
         size: result.size
       });
@@ -31,4 +35,4 @@ export async function POST(req: NextRequest) {
     console.error("Manual backup error:", error);
     return NextResponse.json({ error: "Server error." }, { status: 500 });
   }
-} 
+}
